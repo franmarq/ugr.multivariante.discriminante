@@ -1,0 +1,79 @@
+---
+title: "UGR Multivariante Discriminante ejemplo"
+author: "franmarq@gmail.com"
+date: '2022-12-04'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("MASS")
+```
+
+
+
+```{r datadiscrim}
+datos<-read.table("discriminante.txt", header=TRUE)
+attach(datos)
+datos
+```
+
+[***  hip´otesis de normalidad, igualdad de varianzascovarianzas
+y no multicolinealidad ***]
+
+
+
+
+
+
+
+
+```{r discrimi}
+discrimi<-lda(discriminante~X1+X2+X3+X4+X5+X6+X7+X8+X9+X10+X11+X12+X13,
+              prior=c(0.33,0.33,0.34), method="moment", tol=0.001)
+discrimi
+```
+
+proporci´on de varianza explicada por cada eje
+
+```{r propvar}
+
+discrimi$svd
+
+```
+
+realizar una predicción sobre un par de individuos. Este par de individuos los registramos, dando sus valores en las 13 variables discriminantes:
+
+```{r predictval}
+Datos2<-rbind(c(5.6, 4.2, 15.8, 1.7, 0.17, 1.6, 2.3, 6.0, 4.0, 5.27,0.14, 216.25, 26.66), c(5.45,3.09, 17.82, 1.56, 0.14, 1.62, 1.97,5.21, 2.68, 7.45, 0.15, 285.71, 23.42))
+Datos21<-data.frame(Datos2)
+discrimi2<-predict(discrimi,newdata=Datos21,prior=discrimi$prior,2)
+discrimi2
+
+```
+
+la matrix de confusion
+
+```{r matrixconfu}
+table(predict(discrimi)$class, discriminante)
+discriminante
+```
+
+el grafico de las puntuaciones discriminantes
+gráficos de las puntuaciones discriminantes de los datos
+histogramas de las variables dependientes frente a la variable de agrupación.
+
+
+```{r plotdiscrim}
+plot(discrimi)
+
+pairs(discrimi)
+
+```
+
+
+```{r hist}
+ldahist(datos[,2],datos$discriminante)
+
+
+```

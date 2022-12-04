@@ -1,0 +1,135 @@
+---
+title: "UGR Multivariante Discriminante"
+author: "franmarq@gmail.com"
+date: '2022-12-04'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("MASS")
+library(GGally)
+library(corrplot)
+library(grDevices)
+```
+
+En primer lugar hacemos la lectura de los datos y resumimos los mismos para validar la correcta lectura.
+
+```{r datadiscrim}
+datos<-read.table("discriminante2.txt", header=TRUE)
+attach(datos)
+str(datos)
+```
+
+Ahora, hacemos inicialmente la comprobacion de las Hipotesis sobre los datos, que validarian la aplicacion de la tecnica:
+
+Hipotesis: Normalidad
+
+```{r norm}
+library(mvnormtest)
+shapiro.test(t(datos[,2:4]))
+par(mfrow = c(1,3))
+qqnorm(datos$X1)
+qqline(datos$X1)
+
+qqnorm(datos$X2)
+qqline(datos$X2)
+
+qqnorm(datos$X3)
+qqline(datos$X3)
+
+par(mfrow = c(1,1))
+```
+
+A partir del resultado del Test Shapiro, p=2.682e-05, se rechaza la hipotesis nula, lo que sugiere que las variables X1,X2,X3 no presentan un comportamiento normal.
+
+
+Hipotesis: Igualdad de varianzas-covarianzas
+
+```{r iguvarcov}
+homocedasticidad_tratamiento=bartlett.test(list(datos$X1, datos$X2, datos$X3))
+print(homocedasticidad_tratamiento)
+```
+El resultado del test de Barlett sugiere el rechazo de la hipotesis nula, en otras palabras, indica que las variables no representan igualdad de varianzas. 
+
+
+Hipotesis: No multicolinealidad
+
+```{r multicol}
+cor(datos[c("X1","X2","X3")], use="complete")
+
+ggpairs(datos[,2:4], lower = list(continuous = "smooth"),
+diag = list(continuous = "barDiag"), axisLabels = "none")
+corrplot(cor(datos[c("X1","X2","X3")], use="complete"),sig.level=0.05,typ="lower")
+```
+Dados los resultados tanto de la matriz de covarianzas asi como el grafico, vemos que efectivamente entre las variables X1 y X2 podemos tener un problema de colinealidad por valores que indican alto grado de relacion bivariante.Para el resto de combinaciones no se presenta este comportamiento.
+
+
+Ahora iniciamos el analisis Discriminante:
+
+Consideramos que las probabilidades de pertenencia a cada grupo son iguales. Usaremos, ademas, el metodo de los momentos para la estimacion
+
+```{r discrimi}
+discrimi<-lda(ansiedad~X1+X2+X3,prior=c(0.33,0.33,0.34), method="moment", tol=0.001)
+discrimi
+```
+Del resultado obtenemos lo siguiente: 
+
+La tabla con las probabilidades a priori de pertenencia a cada grupo. 
+Los centroides de los grupos. 
+Los coeficientes de las funciones discriminantes. En nuestro caso dos en funcion de las 3 variables. 
+
+Resultando las siguientes funciones:
+
+D1= +2.763X1-1.180X2-0.009X3
+D2= -0.892X1-0.331X2-0.471X3
+
+Ahora, obtenemos la proporcion de varianza explicada por cada eje
+
+```{r propvar}
+
+discrimi$svd
+
+```
+Comprobamos que la segunda funcion es mucho mas discriminante que la primera. 
+
+Ahora realizamos la prediccion sobre el individuo.
+
+```{r predictval}
+Datos2<-rbind(c(7.5, 9, 2))
+Datos21<-data.frame(Datos2)
+discrimi2<-predict(discrimi,newdata=Datos21,prior=discrimi$prior,2)
+discrimi2
+```
+El resultado nos indica que el individuo tiene probabilidad de 0.993 de pertenecer al grupo 2, lo que confirmaria su pertenencia al grupo N2 de acuerdo a su ansiedad de fumar. 
+
+Obtenemos ahora la matrix de confusion
+
+```{r matrixconfu}
+table(predict(discrimi)$class, ansiedad)
+#ansiedad
+```
+El resultado nos indica que, segun el modelo, hay 2 individuos mal clasificados como del grupo 1 y dos individuos mal clasificados como del grupo 2.
+
+A continuacion obtenemos algunos graficos asociados al analisis.
+
+el grafico de las puntuaciones discriminantes   
+```{r plotdiscrim}
+plot(discrimi)
+```
+Grafico de las puntuaciones discriminantes de los datos
+```{r plotdiscrim2}
+pairs(discrimi)
+```
+Finalmente, obtenemos el histograma de las variables dependientes frente a la variable de agrupacion.
+
+```{r hist}
+ldahist(datos$X1,datos$ansiedad)
+ldahist(datos$X2,datos$ansiedad)
+ldahist(datos$X3,datos$ansiedad)
+```
+
+Validez del modelo
+
+Al principio del analisis vimos como no se cumplen los supuestos de normalidad y variabilidad constante para el conjunto estudiado. Esto no nos permite declarar como valido el modelo planteado. 
+Una opcion que podemo tomar para poder completar de forma adecuada el analisis seria hacer exploraciones para encontrar una transformacion adecuada de los datos que nos permitan validar los supuestos.
